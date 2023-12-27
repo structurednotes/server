@@ -2,9 +2,12 @@ from flask import Flask
 from dash import Dash, html, dcc, callback, Input, Output
 import dash_bootstrap_components as dbc
 from api import api
-from config import Config
+from config import Config, setup_logging
 from database.database import db
 from pages import stats
+
+
+setup_logging()
 
 
 # Function to create the Flask app
@@ -29,7 +32,7 @@ server = create_app()
 app = Dash(
     __name__,
     server=server,
-    title="AIR Server",
+    title="AIR",
     external_stylesheets=[dbc.themes.BOOTSTRAP],
     suppress_callback_exceptions=True,
 )
@@ -77,4 +80,4 @@ app.clientside_callback(
 )
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5000, dev_tools_hot_reload=False)

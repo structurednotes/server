@@ -1,14 +1,20 @@
 from flask import jsonify
 from sqlalchemy import or_
-from .models import APICall
 from .database import db
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 def add_record(model, **kwargs):
-    record = model(**kwargs)
-    db.session.add(record)
-    db.session.commit()
-    return record.to_dict()
+    try:
+        with db.session.begin_nested():
+            record = model(**kwargs)
+            db.session.add(record)
+        return record.to_dict()
+    except Exception as e:
+        logger.error(f"Error adding record: {str(e)}")
 
 
 def update_record(model, record_id, **updates):

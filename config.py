@@ -1,4 +1,5 @@
 import os
+import logging
 
 
 class Config:
@@ -9,3 +10,12 @@ class Config:
         SQLALCHEMY_DATABASE_URI = "postgresql://username:password@localhost/dbname"
     else:
         SQLALCHEMY_DATABASE_URI = "sqlite:///api_calls_dev.db"
+
+
+def setup_logging():
+    """Configure the application's logging setup."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(levelname)s - [%(name)s] %(message)s",
+        handlers=[logging.StreamHandler()],
+    )

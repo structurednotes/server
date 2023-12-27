@@ -6,6 +6,7 @@ from uuid import uuid4
 from datetime import datetime as dt
 from flask_restx import Api, Resource
 from database.models import db, APICall
+from database.helpers import add_record
 from flask import request
 
 
@@ -120,7 +121,7 @@ class AirPricing(Resource):
         machine = args.get("Machine", "Unknown Machine")
         username = args.get("UserName", "Unknown User")
         client_ip = request.remote_addr
-        endpoint = "/api/air/pricing"
+        endpoint = "/api/air"
         method = request.method
         user_agent = request.headers.get("User-Agent", "Unknown")
         referrer = request.headers.get("Referer", "Unknown")
@@ -130,66 +131,91 @@ class AirPricing(Resource):
         values = clean_json_values(args, "values")
 
         # Prepare log message with User Details
-        msg = f"AIR Pricing from {machine} by {username}"
+        msg = f"AIR Pricing by {username} from {machine} - parameters: {parameters} - values: {values}"
 
-        # Read optional parameters
-        option1 = args.get("option1")
-        if option1:
-            option1 = option1.lower()
+        try:
+            # Read optional parameters
+            option1 = args.get("option1")
+            if option1:
+                option1 = option1.lower()
 
-        option2 = args.get("option2")
-        if option2:
-            option2 = option2.lower()
+            option2 = args.get("option2")
+            if option2:
+                option2 = option2.lower()
 
-        # Orientation of the Pricing Grid
-        pricing_orientation = "rows"
-        if len(parameters) > len(parameters[0]):
-            pricing_orientation = "columns"
+            # Orientation of the Pricing Grid
+            pricing_orientation = "rows"
+            if parameters and len(parameters) > len(parameters[0]):
+                pricing_orientation = "columns"
 
-            # Transpose the corresponding Parameters and Values
-            parameters = transpose(parameters)
-            values = transpose(values)
+                # Transpose the corresponding Parameters and Values
+                parameters = transpose(parameters)
+                values = transpose(values)
 
-        # Turn the inputs to list of pricings
-        pricings = [{x: y for x, y in zip(parameters[0], z)} for z in values]
+            # Turn the inputs to list of pricings
+            pricings = [{x: y for x, y in zip(parameters[0], z)} for z in values]
 
-        # Initialize Results and Results Type
-        data = []
+            # Initialize Results and Results Type
+            data = []
 
-        for pricing in pricings:
-            data.append(
-                [
-                    {"Value": f"AIR - {uuid4()}", "Type": "string"},
-                    {"Value": 1 + random.random(), "Type": "float"},
-                    {"Value": dt.today().strftime("%Y-%m-%d"), "Type": "date"},
-                    # {"Value": dt.today(), "Type": "date"},
-                ],
+            for pricing in pricings:
+                data.append(
+                    [
+                        {"Value": f"AIR - {uuid4()}", "Type": "string"},
+                        {"Value": 1 + random.random(), "Type": "float"},
+                        {"Value": dt.today().strftime("%Y-%m-%d"), "Type": "date"},
+                        # {"Value": dt.today(), "Type": "date"},
+                    ],
+                )
+
+            logging.info(msg)
+
+            # Calculate response time
+            response_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+
+            # Log the successful API call to the database
+            add_record(
+                APICall,
+                machine=machine,
+                username=username,
+                client_ip=client_ip,
+                endpoint=endpoint,
+                method=method,
+                user_agent=user_agent,
+                referrer=referrer,
+                parameters=json.dumps(args),  # Serialize args to JSON string
+                response_time=response_time,
+                status_code=200,  # Assuming success at this point
+                # response_body can be added
             )
 
-        logging.info(msg)
+            return {"data": data}
 
-        # Calculate response time
-        response_time = (time.time() - start_time) * 1000  # Convert to milliseconds
+        except Exception as e:
+            # Log the error message
+            logging.error(f"Error processing AIR Pricing: {str(e)} - {msg}")
 
-        # Log the successful API call to the database
-        log_entry = APICall(
-            machine=machine,
-            username=username,
-            client_ip=client_ip,
-            endpoint=endpoint,
-            method=method,
-            user_agent=user_agent,
-            referrer=referrer,
-            parameters=json.dumps(args),  # Serialize args to JSON string
-            response_time=response_time,
-            status_code=200,  # Assuming success at this point
-            # response_body can be added if needed
-        )
-        db.session.add(log_entry)
-        db.session.commit()
+            # Log the failed API call to the database
+            add_record(
+                APICall,
+                machine=machine,
+                username=username,
+                client_ip=client_ip,
+                endpoint=endpoint,
+                method=method,
+                user_agent=user_agent,
+                referrer=referrer,
+                parameters=json.dumps(args) if args else None,
+                response_time=(time.time() - start_time) * 1000,
+                status_code=500,  # Internal Server Error
+                error_message=str(e),
+                # response_body can be added
+            )
 
-        return {"data": data}
+            data = [[{"Value": f"AIR Error: {e}", "Type": "string"}]]
+
+            return {"data": data}
 
 
 # Registering the resource with the API
-api.add_resource(AirPricing, "/airpricing")
+api.add_resource(AirPricing, "/air")
