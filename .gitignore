@@ -1,0 +1,37 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Editor directories and files
+.vscode/
+
+# Configuration files
+config.py
+
+# Database files
+instance/
+
+# Log files
+*.log
+
+# If using npm for front-end
+node_modules/
+
+# If there are any csv, json, excel files that are data dumps you wish to ignore
+*.csv
+*.json
+*.xls
+*.xlsx
